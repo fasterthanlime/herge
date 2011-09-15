@@ -1,0 +1,5 @@
+.libs
+build/
+prefix/
+*_tmp
+.*.swp
