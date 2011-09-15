@@ -10,11 +10,11 @@ GrammarReader: class extends StringReader {
         super(string)
     }
 
-    readRegexp: func (r: Regexp) -> String {
+    readRegexp: func (r: Regexp, groupIndex := 0) -> String {
         _match := r matches(string, marker, string size)
-        if(_match) {
-            sub := _match group(0)
-            marker += sub length() 
+        if(_match && _match groupStart(0) == marker) {
+            sub := _match group(groupIndex)
+            marker += _match groupLength(0)
             sub
         } else {
             ""
@@ -39,7 +39,7 @@ GrammarReader: class extends StringReader {
 
         line := readLine()
 
-        "Parsing error at %d: %s\n> %s\n  %s" printfln(marker, message, line, " " times(errorMarker - startOfLine) + "~")
+        "Parsing error at %d: %s\n> %s\n  %s" printfln(errorMarker, message, line, " " times(errorMarker - startOfLine) + "~")
         exit(1)
     }
 

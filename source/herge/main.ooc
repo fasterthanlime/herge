@@ -79,6 +79,19 @@ InstanceRule: class extends Rule {
 
 }
 
+NamedRule: class extends Rule {
+
+    name: String
+    instance: Rule
+
+    init: func(=name, =instance)
+
+    toString: func -> String {
+        "%s:%s" format(name, instance _)
+    }
+
+}
+
 RegexpRule: class extends Rule {
 
     expr: String
@@ -160,7 +173,8 @@ AndRule: class extends Rule {
 Grammar: class {
 
     // ----- Regular expressions
-    word := Regexp compile("[A-Za-z-]*")
+    word := Regexp compile("[A-Za-z\\-]*")
+    wordColon := Regexp compile("([A-Za-z\\-]*):")
     allWs := Regexp compile("[ \t\n]*") 
     ws := Regexp compile("[ \t]*")
     assDecl := Regexp compile(":=[ \t]*")
@@ -207,6 +221,9 @@ Grammar: class {
     }
 
     readRule: func -> Rule {
+        ruleName := reader readRegexp(wordColon, 1)
+        skipWhitespace()
+
         rule := match (reader peek()) {
             case '"' =>
                 reader read()
@@ -216,15 +233,18 @@ Grammar: class {
                 expr := "[%s]" format(reader readUntil(']'))
                 RegexpRule new(expr)
             case '(' =>
+                "Reading paren" println()
                 reader read()
                 rule := readRule() 
                 skipWhitespace()
                 if(reader read() != ')') reader error("Expected closing parenthesis")
                 rule
              case =>
-                name := reader readRegexp(word)
-                if(name empty?()) reader error("Expected rule here")
-                instance := InstanceRule new(name)
+                instanceName := reader readRegexp(word)
+                "Got instanceName %s" printfln(instanceName)
+                if(instanceName empty?()) reader error("Expected rule here")
+
+                instance := InstanceRule new(instanceName)
                 skipWhitespace()
                 if(reader peek() == '<') {
                     reader read()
@@ -236,10 +256,15 @@ Grammar: class {
                             reader error("Invalid instance param list, expected comma")
                         }
                     }
-                    reader read()
+                    if(reader read() != '>') reader error("Expected '>' here")
                 }
+
                 instance
         }
+
+        if(ruleName) rule = NamedRule new(ruleName trim(':'), rule)
+
+        "Just read %s %s" printfln(rule class name, rule _)
 
         while (true) {
             skipWhitespace()
@@ -259,13 +284,18 @@ Grammar: class {
                     skipAllWhitespace()
                 case '\n' =>
                     break
+                case '>' =>
+                    break
+                case ')' =>
+                    break
+
                 case =>
                     rightRule := readRule() 
                     rule = AndRule new(rule, rightRule)
             }
+            "Just read %s %s" printfln(rule class name, rule _)
         }
 
-        "Just read %s %s" printfln(rule class name, rule _)
         rule
     }
 
