@@ -4,6 +4,8 @@ import text/Regexp
 
 GrammarReader: class extends StringReader {
 
+    line := Regexp compile(".*")
+
     init: func (string: String) {
         super(string)
     }
@@ -29,7 +31,15 @@ GrammarReader: class extends StringReader {
     }
 
     error: func (message: String) {
-        "Parsing error at %d: %s" printfln(marker, message)
+        errorMarker := marker
+        while(peek() != '\n' && marker > 0) rewind(1)
+        read()
+
+        startOfLine := marker 
+
+        line := readLine()
+
+        "Parsing error at %d: %s\n> %s\n  %s" printfln(marker, message, line, " " times(errorMarker - startOfLine) + "~")
         exit(1)
     }
 
