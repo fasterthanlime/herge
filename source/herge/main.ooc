@@ -28,9 +28,9 @@ TopRule: class extends Rule {
     paramNames: ArrayList<String>
     params := HashMap<String, Rule> new()
 
-    instances := ArrayList<Rule> new()
+    instance: Rule
 
-    init: func (=name, =paramNames) {
+    init: func (=name, =paramNames, =instance) {
     }
 
     resolve: func (g: Grammar) {
@@ -45,7 +45,7 @@ TopRule: class extends Rule {
 
     toString: func -> String {
         paramRepr := paramNames ? "<" + paramNames join(", ") + ">" : ""
-        "%s%s := %s" format(name, paramRepr, instances map(|x| x _) join(" "))
+        "%s%s := %s" format(name, paramRepr, instance _)
     }
 
 }
@@ -127,6 +127,7 @@ ZeroOrMore: class extends Rule {
 
 /**
  * somerule | someotherrule
+ * Must match somerule, or someotherrule
  */
 OrRule: class extends Rule {
 
@@ -140,10 +141,26 @@ OrRule: class extends Rule {
 
 }
 
+/**
+ * somerule someotherrule
+ * Must match somerule, then someotherrule
+ */
+AndRule: class extends Rule {
+
+    leftRule, rightRule: Rule
+
+    init: func(=leftRule, =rightRule) {}
+
+    toString: func -> String {
+        "%s %s" format(leftRule _, rightRule _)
+    }
+
+}
+
 Grammar: class {
 
     // ----- Regular expressions
-    word := Regexp compile("[A-Za-z_]*")
+    word := Regexp compile("[A-Za-z-]*")
     allWs := Regexp compile("[ \t\n]*") 
     ws := Regexp compile("[ \t]*")
     assDecl := Regexp compile(":=[ \t]*")
@@ -175,18 +192,15 @@ Grammar: class {
                 params = GrammarReader new(paramString) readCommaList()
             }
 
-            rule := TopRule new(name, params)
 
             skipWhitespace()
             if (!reader readRegexp(assDecl)) reader error("Expected ':=' here")
 
-            while(reader hasNext?() && reader peek() != '\n') {
-                skipWhitespace()
-                instance := readRule()
-                if(!instance) reader error("Expected instance here")
-                rule instances add(instance)    
-            }
+            skipWhitespace()
+            instance := readRule()
+            if(!instance) reader error("Expected instance here")
 
+            rule := TopRule new(name, params, instance)
             ">> %s" printfln(rule _)
             rules put(name, rule)
         }
@@ -201,9 +215,15 @@ Grammar: class {
                 reader read()
                 expr := "[%s]" format(reader readUntil(']'))
                 RegexpRule new(expr)
-            case =>
+            case '(' =>
+                reader read()
+                rule := readRule() 
+                skipWhitespace()
+                if(reader read() != ')') reader error("Expected closing parenthesis")
+                rule
+             case =>
                 name := reader readRegexp(word)
-                if(!name) reader error("Expected rule here")
+                if(name empty?()) reader error("Expected rule here")
                 instance := InstanceRule new(name)
                 skipWhitespace()
                 if(reader peek() == '<') {
@@ -235,12 +255,17 @@ Grammar: class {
                     skipWhitespace()
                     rightRule := readRule()
                     rule = OrRule new(rule, rightRule)
+                case '\\' =>
+                    skipAllWhitespace()
+                case '\n' =>
+                    break
                 case =>
-                    break 
+                    rightRule := readRule() 
+                    rule = AndRule new(rule, rightRule)
             }
         }
 
-        "Just read rule %s" printfln(rule _)
+        "Just read %s %s" printfln(rule class name, rule _)
         rule
     }
 
