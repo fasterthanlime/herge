@@ -1,12 +1,11 @@
-import io/[File, Reader, StringReader]
+import io/[Reader, StringReader]
+import structs/ArrayList
 import text/Regexp
 
 GrammarReader: class extends StringReader {
 
-    path: String
-
-    init: func (=path) {
-        super(File new(path) read())
+    init: func (string: String) {
+        super(string)
     }
 
     readRegexp: func (r: Regexp) -> String {
@@ -18,6 +17,20 @@ GrammarReader: class extends StringReader {
         } else {
             ""
         }
+    }
+
+    readCommaList: func -> ArrayList<String> {
+        list := ArrayList<String> new() 
+        while(hasNext?()) {
+            word := readUntil(',')
+            list add(word trim())
+        }
+        list
+    }
+
+    error: func (message: String) {
+        "Parsing error at %d: %s" printfln(marker, message)
+        exit(1)
     }
 
 }

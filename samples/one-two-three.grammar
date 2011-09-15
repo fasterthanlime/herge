@@ -1,0 +1,5 @@
+
+All<One, Two, Three> := One Two Three
+
+OneTwoThree := All<"1", "2", "3">
+
