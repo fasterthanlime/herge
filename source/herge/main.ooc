@@ -34,18 +34,17 @@ TopRule: class extends Rule {
     }
 
     resolve: func (g: Grammar) {
-        for(name in paramNames) {
-            rule := g rules[name]
-            if(!rule) {
-                Exception new("Undefined rule %s" format(name)) throw()
-            }
-            params put(name, rule)
-        }
+        instance resolve(g)
     }
 
     toString: func -> String {
         paramRepr := paramNames ? "<" + paramNames join(", ") + ">" : ""
         "%s%s := %s" format(name, paramRepr, instance _)
+    }
+
+    writeFile: func (params: BuildParams) {
+        outFile := File new(params outPath, params prefix + name replaceAll('-', '_'))
+        "Writing to %s" printfln(outFile path)
     }
 
 }
@@ -61,6 +60,10 @@ SymbolRule: class extends Rule {
     init: func(=symbol) {}
 
     toString: func -> String { "\"%s\"" format(symbol) }
+    
+    resolve: func (g: Grammar) {
+        // nothing to do
+    }
 
 }
 
@@ -77,6 +80,14 @@ InstanceRule: class extends Rule {
         "%s%s" format(refName, paramRepr)
     }
 
+    resolve: func (g: Grammar) {
+        ref = g rules[refName]
+        if(!ref) {
+            // This currently fail on generic parameters - we need some kind of stack here
+            //Exception new("Undefined rule %s" format(refName)) throw()
+        }
+    }
+
 }
 
 NamedRule: class extends Rule {
@@ -90,6 +101,10 @@ NamedRule: class extends Rule {
         "%s:%s" format(name, instance _)
     }
 
+    resolve: func (g: Grammar) {
+        instance resolve(g)
+    }
+
 }
 
 RegexpRule: class extends Rule {
@@ -100,6 +115,10 @@ RegexpRule: class extends Rule {
 
     toString: func -> String {
         expr
+    }
+
+    resolve: func (g: Grammar) {
+        // nothing to resolve here.
     }
 
 }
@@ -118,6 +137,9 @@ ZeroOrOne: class extends Rule {
         "%s?" format(rule _)
     }
 
+    resolve: func (g: Grammar) {
+        rule resolve(g)
+    }
 }
 
 /**
@@ -136,6 +158,10 @@ ZeroOrMore: class extends Rule {
         "%s*" format(rule _)
     }
 
+    resolve: func (g: Grammar) {
+        rule resolve(g)
+    }
+
 }
 
 /**
@@ -150,6 +176,11 @@ OrRule: class extends Rule {
 
     toString: func -> String {
         "%s | %s" format(leftRule _, rightRule _)
+    }
+
+    resolve: func (g: Grammar) {
+        leftRule resolve(g)
+        rightRule resolve(g)
     }
 
 }
@@ -168,6 +199,11 @@ AndRule: class extends Rule {
         "%s %s" format(leftRule _, rightRule _)
     }
 
+    resolve: func (g: Grammar) {
+        leftRule resolve(g)
+        rightRule resolve(g)
+    }
+
 }
 
 Grammar: class {
@@ -184,9 +220,17 @@ Grammar: class {
     rules := HashMap<String, TopRule> new()
     reader: GrammarReader
 
-    init: func (path: String) {
+    init: func (path: String, params: BuildParams) {
         reader = GrammarReader new(File new(path) read())
         readTopLevels()
+
+        for(rule in rules) {
+            rule resolve(this)
+        }
+
+        for(rule in rules) {
+            rule writeFile(params)
+        }
     }
 
     readTopLevels: func {
@@ -309,13 +353,31 @@ Grammar: class {
 
 }
 
+BuildParams: class {
+    outPath := "herge_output"
+    prefix := ""
+
+    init: func (opts: Opts) {
+        opts opts each(|key, value|
+            match key {
+                case "outpath" =>
+                    outPath = value
+                case "prefix" =>
+                    prefix = value
+                case =>
+                    "Unknown option --%s" printfln(key)
+            }
+        )
+    }
+}
+
 main: func (mainArgs: ArrayList<String>) {
 
     opts := Opts new(mainArgs)
 
-    args := opts args
-    args each(|arg|
-        g := Grammar new(arg)
+    params := BuildParams new(opts)
+    opts args each(|arg|
+        g := Grammar new(arg, params)
     )
 
 }
