@@ -1,6 +1,6 @@
 .libs
 build/
 prefix/
-herge
+bin/
 *_tmp
 .*.swp
