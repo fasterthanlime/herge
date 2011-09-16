@@ -43,7 +43,7 @@ TopRule: class extends Rule {
     }
 
     writeFile: func (params: BuildParams) {
-        outFile := File new(params outPath, params prefix + name replaceAll('-', '_'))
+        outFile := File new(params outPath, params prefix + name replaceAll('-', '_') + ".ooc")
         "Writing to %s" printfln(outFile path)
     }
 
