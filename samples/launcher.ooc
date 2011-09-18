@@ -12,7 +12,13 @@ main: func (args: ArrayList<String>) {
 
     args removeAt(0) 
     args each(|arg|
-        tok := AST parse(GrammarReader new(FileReader new(arg == "-" ? stdin : arg) readAll()))
+        tok := AST parse(GrammarReader new(match arg {
+            case "-" =>
+               FileReader new(stdin)
+            case =>
+               FileReader new(arg)
+            } readAll()))
+
         if(tok) {
             tok print()
         } else {
