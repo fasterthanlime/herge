@@ -2,7 +2,7 @@ import io/[Reader, StringReader]
 import structs/ArrayList
 import text/Regexp
 
-GrammarReader: class extends StringReader {
+GrammarReader: class exxtends StringReader {
 
     line := Regexp compile(".*")
 
