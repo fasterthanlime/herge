@@ -61,7 +61,9 @@ Rule: abstract class {
 
 }
 
-
+/**
+ * Each TopRule generates an .ooc file
+ */
 TopRule: class extends Rule {
 
     name: String
@@ -122,9 +124,8 @@ TopRule: class extends Rule {
 
 /**
  * "some string here"
- * matches the string exactly or nothing
  */
-SymbolRule: class extends Rule {
+StringRule: class extends Rule {
 
     symbol: String
 
@@ -140,7 +141,7 @@ SymbolRule: class extends Rule {
     }
 
     writeInSitu: func (trail: Trail, writer: Writer) {
-        writer writef("     // symbol rule %s\n", toString())
+        writer writef("     // %s\n", toString())
         writer writef("     for(c in \"%s\") if(_reader read() != c) {\n", symbol)
         writer write ("       _reader reset(_start)\n")
         writer write ("       return null\n")
@@ -150,6 +151,9 @@ SymbolRule: class extends Rule {
 
 }
 
+/**
+ * somerule<subrule, othersubrule>
+ */
 InstanceRule: class extends Rule {
 
     refName: String
@@ -173,6 +177,9 @@ InstanceRule: class extends Rule {
 
 }
 
+/**
+ * somename: somerule
+ */
 NamedRule: class extends Rule {
 
     name: String
@@ -181,7 +188,7 @@ NamedRule: class extends Rule {
     init: func(=name, =instance)
 
     toString: func -> String {
-        "%s:%s" format(name, instance _)
+        "%s: %s" format(name, instance _)
     }
 
     resolve: func (g: Grammar) {
@@ -190,7 +197,10 @@ NamedRule: class extends Rule {
 
 }
 
-RegexpRule: class extends Rule {
+/**
+ * [someregexpclass]
+ */
+ClassRule: class extends Rule {
 
     expr: String
 
@@ -208,9 +218,8 @@ RegexpRule: class extends Rule {
 
 /**
  * somerule? 
- * matches the rule exactly once or none at all
  */
-ZeroOrOne: class extends Rule {
+QueryRule: class extends Rule {
 
     rule: Rule
 
@@ -227,11 +236,8 @@ ZeroOrOne: class extends Rule {
 
 /**
  * somerule*
- * matches the rule from zero to infinite times
- * note that matching it infinite times might take
- * a non-finite amount of time to complete. Your call.
  */
-ZeroOrMore: class extends Rule {
+StarRule: class extends Rule {
 
     rule: Rule
 
@@ -248,10 +254,28 @@ ZeroOrMore: class extends Rule {
 }
 
 /**
- * somerule | someotherrule
- * Must match somerule, or someotherrule
+ * somerule+
  */
-OrRule: class extends Rule {
+PlusRule: class extends Rule {
+
+    rule: Rule
+
+    init: func(=rule) {}
+
+    toString: func -> String {
+        "%s*" format(rule _)
+    }
+
+    resolve: func (g: Grammar) {
+        rule resolve(g)
+    }
+
+}
+
+/**
+ * leftRule | rightRule
+ */
+BarRule: class extends Rule {
 
     leftRule, rightRule: Rule
     sub1, sub2: String

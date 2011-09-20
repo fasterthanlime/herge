@@ -77,11 +77,11 @@ Grammar: class {
         rule := match (reader peek()) {
             case '"' =>
                 reader read()
-                SymbolRule new(reader readUntil('"')) 
+                StringRule new(reader readUntil('"')) 
             case '[' =>
                 reader read()
                 expr := "[%s]" format(reader readUntil(']'))
-                RegexpRule new(expr)
+                ClassRule new(expr)
             case '(' =>
                 "Reading paren" println()
                 reader read()
@@ -121,15 +121,18 @@ Grammar: class {
             match (reader peek()) {
                 case '*' => 
                     reader read()
-                    rule = ZeroOrMore new(rule)
+                    rule = StarRule new(rule)
+                case '+' =>
+                    reader read()
+                    rule = PlusRule new(rule)
                 case '?' =>
                     reader read()
-                    rule = ZeroOrOne new(rule)
+                    rule = QueryRule new(rule)
                 case '|' =>
                     reader read()
                     skipWhitespace()
                     rightRule := readRule()
-                    rule = OrRule new(rule, rightRule)
+                    rule = BarRule new(rule, rightRule)
                 case '\\' =>
                     skipAllWhitespace()
                 case '\n' =>
