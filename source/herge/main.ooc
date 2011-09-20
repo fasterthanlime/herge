@@ -1,4 +1,4 @@
-import structs/[ArrayList, HashMap]
+import structs/[ArrayList, HashMap, Stack]
 import text/[Opts, Regexp]
 import os/Env
 import io/[File, FileWriter, Writer]
@@ -9,6 +9,8 @@ import GrammarReader
  * A rule can be matched against some text
  */
 Rule: abstract class {
+
+    seed := static 0
 
     resolve: func (g: Grammar) {
         Exception new("Class %s is doing nothing to resolve! Aborting" format(class name)) throw()
@@ -22,8 +24,41 @@ Rule: abstract class {
         }
     }
 
-    writeParser: func (g: Grammar, params: BuildParams, writer: Writer) {
-        Exception new("Class %s is doing nothing to writeParser! Aborting" format(class name)) throw()
+    writePrologue: func (trail: Trail, writer: Writer) {
+        Exception new("Class %s is doing nothing to writePrologue! Aborting" format(class name)) throw()
+    }
+
+    writeInSitu: func (trail: Trail, writer: Writer) {
+        Exception new("Class %s is doing nothing to writeInSitu! Aborting" format(class name)) throw()
+    }
+
+    genName: func -> String {
+        seed += 1
+        "parseRule%d" format(seed)
+    }
+
+    writeSub: func (trail: Trail, writer: Writer, sub: Rule) -> String {
+        name := genName()
+        writer writef("%s: static func (_reader: GrammarReader) -> Token {\n", name)
+        writer write ("_start := _reader mark()\n")
+        writer write ("_end  : Long = -1\n")
+        sub writeInSitu(trail, writer)
+        writer write ("  Token new(_reader, _start, _end)")
+        writer write ("}\n\n")
+        name
+    }
+
+}
+
+Trail: class {
+
+    grammar: Grammar
+    params: BuildParams
+
+    stack := Stack<Rule> new()
+
+    init: func (=grammar, =params) {
+          
     }
 
 }
@@ -59,6 +94,8 @@ TopRule: class extends Rule {
         "Writing to %s" printfln(outFile path)
         writer := FileWriter new(outFile)
 
+        trail := Trail new(g, params)
+
         // write imports
         writer write ("import GrammarReader, Token\n\n")
 
@@ -69,10 +106,12 @@ TopRule: class extends Rule {
         writer write (" */\n")
         writer writef("%s: class extends Token {\n", prefixedName)
         writer write ("  init: super func\n")
-        writer write ("  parse: static func (_reader: GrammarReader) -> This {\n")
+        instance writePrologue(trail, writer)
+
+        writer write ("  parse: static func (_reader: GrammarReader) -> Token {\n")
         writer write ("     _start: Long  = _reader marker\n")
         writer write ("     _end: Long  = -1\n")
-        instance writeParser(g, params, writer)
+        instance writeInSitu(trail, writer)
         writer write ("     new(_reader, _start, _end)\n")
         writer write ("  }\n")
         writer write ("}\n\n")
@@ -98,7 +137,10 @@ SymbolRule: class extends Rule {
         // nothing to do
     }
 
-    writeParser: func (g: Grammar, params: BuildParams, writer: Writer) {
+    writePrologue: func (trail: Trail, writer: Writer) {
+    }
+
+    writeInSitu: func (trail: Trail, writer: Writer) {
         writer writef("     // symbol rule %s\n", toString())
         writer writef("     for(c in \"%s\") if(_reader read() != c) {\n", symbol)
         writer write ("       _reader reset(_start)\n")
@@ -234,6 +276,7 @@ OrRule: class extends Rule {
 AndRule: class extends Rule {
 
     leftRule, rightRule: Rule
+    sub1, sub2: String
 
     init: func(=leftRule, =rightRule) {}
 
@@ -244,6 +287,22 @@ AndRule: class extends Rule {
     resolve: func (g: Grammar) {
         leftRule resolve(g)
         rightRule resolve(g)
+    }
+
+    writePrologue: func (trail: Trail, writer: Writer) {
+        sub1 = writeSub(trail, writer, leftRule)
+        sub2 = writeSub(trail, writer, rightRule)
+    }
+
+    writeInSitu: func (trail: Trail, writer: Writer) {
+        tok1 := genName()
+        tok2 := genName()
+        writer writef("%s := %s(_reader)\n", tok1, sub1)
+        writer writef("if(%s) {\n", tok1)
+        writer writef("  %s := %s(_reader)\n", tok2, sub2)
+        writer writef("  if(%s) return %s merge(%s)\n", tok2, tok1, tok2)
+        writer write ("}\n")
+        writer write ("return null\n")
     }
 
 }
