@@ -275,7 +275,7 @@ PlusRule: class extends Rule {
 /**
  * leftRule | rightRule
  */
-BarRule: class extends Rule {
+AlternativeRule: class extends Rule {
 
     leftRule, rightRule: Rule
     sub1, sub2: String
@@ -315,7 +315,7 @@ BarRule: class extends Rule {
  * somerule someotherrule
  * Must match somerule, then someotherrule
  */
-AndRule: class extends Rule {
+SequenceRule: class extends Rule {
 
     leftRule, rightRule: Rule
     sub1, sub2: String

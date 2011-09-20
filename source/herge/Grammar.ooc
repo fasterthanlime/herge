@@ -61,7 +61,7 @@ Grammar: class {
             if (!reader readRegexp(assDecl)) reader error("Expected ':=' here")
 
             skipWhitespace()
-            instance := readRule()
+            instance := readExpression()
             if(!instance) reader error("Expected instance here")
 
             rule := TopRule new(name, params, instance)
@@ -70,7 +70,25 @@ Grammar: class {
         }
     }
 
-    readRule: func -> Rule {
+    readExpression: func -> Rule {
+        sequence := readSequence()
+        "in readExpression, just read sequence %s" printfln(sequence toString())
+        skipWhitespace()
+
+        match (reader peek()) {
+            case '|' =>
+                reader read()
+                skipWhitespace()
+                AlternativeRule new(sequence, readExpression())
+            case ')' =>
+                sequence
+            case =>
+                "reader peek() == '%c'" printfln(reader peek())
+                sequence
+        }
+    }
+
+    readSequence: func -> Rule {
         ruleName := reader readRegexp(wordColon, 1)
         skipWhitespace()
 
@@ -85,13 +103,14 @@ Grammar: class {
             case '(' =>
                 "Reading paren" println()
                 reader read()
-                rule := readRule() 
+                rule := readExpression() 
                 skipWhitespace()
                 if(reader read() != ')') reader error("Expected closing parenthesis")
+                "Finished paren, rule = %s" printfln(rule toString())
                 rule
-             case =>
+            case =>
                 instanceName := reader readRegexp(word)
-                "Got instanceName %s" printfln(instanceName)
+                "Got instanceName '%s', peek = '%c'" printfln(instanceName, reader peek())
                 if(instanceName empty?()) reader error("Expected rule here")
 
                 instance := InstanceRule new(instanceName)
@@ -101,7 +120,7 @@ Grammar: class {
                     skipWhitespace()
                     while(reader peek() != '>') {
                         skipWhitespace()
-                        instance params add(readRule())
+                        instance params add(readExpression())
                         if(!reader readRegexp(comma)) {
                             reader error("Invalid instance param list, expected comma")
                         }
@@ -128,11 +147,6 @@ Grammar: class {
                 case '?' =>
                     reader read()
                     rule = QueryRule new(rule)
-                case '|' =>
-                    reader read()
-                    skipWhitespace()
-                    rightRule := readRule()
-                    rule = BarRule new(rule, rightRule)
                 case '\\' =>
                     skipAllWhitespace()
                 case '\n' =>
@@ -141,10 +155,11 @@ Grammar: class {
                     break
                 case ')' =>
                     break
-
+                case '|' =>
+                    break
                 case =>
-                    rightRule := readRule() 
-                    rule = AndRule new(rule, rightRule)
+                    rightRule := readSequence() 
+                    rule = SequenceRule new(rule, rightRule)
             }
             "Just read %s %s" printfln(rule class name, rule _)
         }
