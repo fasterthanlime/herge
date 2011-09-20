@@ -254,6 +254,7 @@ ZeroOrMore: class extends Rule {
 OrRule: class extends Rule {
 
     leftRule, rightRule: Rule
+    sub1, sub2: String
 
     init: func(=leftRule, =rightRule) {}
 
@@ -265,6 +266,24 @@ OrRule: class extends Rule {
         leftRule resolve(g)
         rightRule resolve(g)
     }
+
+    writePrologue: func (trail: Trail, writer: Writer) {
+        leftRule writePrologue(trail, writer)
+        rightRule writePrologue(trail, writer)
+        sub1 = writeSub(trail, writer, leftRule)
+        sub2 = writeSub(trail, writer, rightRule)
+    }
+
+    writeInSitu: func (trail: Trail, writer: Writer) {
+        tok1 := genName()
+        tok2 := genName()
+        writer writef("%s := %s(_reader)\n", tok1, sub1)
+        writer writef("if(%s) return %s\n", tok1, tok1)
+        writer writef("%s := %s(_reader)\n", tok2, sub2)
+        writer writef("if(%s) return %s\n", tok2, tok2)
+        writer write ("return null\n")
+    }
+
 
 }
 
