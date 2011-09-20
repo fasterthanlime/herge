@@ -43,7 +43,7 @@ Rule: abstract class {
         writer write ("_start := _reader mark()\n")
         writer write ("_end  : Long = -1\n")
         sub writeInSitu(trail, writer)
-        writer write ("  Token new(_reader, _start, _end)")
+        writer write ("  Token new(_reader, _start, _end)\n")
         writer write ("}\n\n")
         name
     }
@@ -290,6 +290,8 @@ AndRule: class extends Rule {
     }
 
     writePrologue: func (trail: Trail, writer: Writer) {
+        leftRule writePrologue(trail, writer)
+        rightRule writePrologue(trail, writer)
         sub1 = writeSub(trail, writer, leftRule)
         sub2 = writeSub(trail, writer, rightRule)
     }
