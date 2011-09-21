@@ -212,37 +212,12 @@ ClassRule: class extends Rule {
 
 }
 
-/**
- * somerule? 
- */
-QueryRule: class extends Rule {
-
-    rule: Rule
-
-    init: func(=rule) {}
-
-    toString: func -> String {
-        "%s?" format(rule _)
-    }
-
-    resolve: func (g: Grammar) {
-        rule resolve(g)
-    }
-}
-
-/**
- * somerule*
- */
-StarRule: class extends Rule {
+UnaryRule: abstract class extends Rule {
 
     rule: Rule
     sub: String
 
-    init: func(=rule) {}
-
-    toString: func -> String {
-        "%s*" format(rule _)
-    }
+    init: func (=rule)
 
     resolve: func (g: Grammar) {
         rule resolve(g)
@@ -253,10 +228,43 @@ StarRule: class extends Rule {
         sub = writeSub(trail, writer, rule)
     }
 
+}
+
+/**
+ * somerule? 
+ */
+QueryRule: class extends UnaryRule {
+
+    init: super func
+
+    toString: func -> String {
+        "%s?" format(rule _)
+    }
+
+    writeInSitu: func (trail: Trail, writer: Writer) {
+        tok1 := genName()
+        writer writef("%s := %s(_reader)\n", tok1, sub)
+        writer writef("%s ? %s : _reader emptyToken()\n", tok1)
+    }
+
+}
+
+/**
+ * somerule*
+ */
+StarRule: class extends UnaryRule {
+
+    init: super func
+
+    toString: func -> String {
+        "%s*" format(rule _)
+    }
+
     writeInSitu: func (trail: Trail, writer: Writer) {
         tok1 := genName()
         tok2 := genName()
         writer writef("%s := %s(_reader)\n", tok1, sub)
+        writer writef("if(!%s) return _reader emptyToken()\n", tok1, sub)
         writer writef("while (%s) {\n", tok1)
         writer writef("  %s := %s(_reader)\n", tok2, sub)
         writer writef("  if(%s) { %s = %s merge(%s) } else { break }\n", tok2, tok1, tok1, tok2)
@@ -270,18 +278,23 @@ StarRule: class extends Rule {
 /**
  * somerule+
  */
-PlusRule: class extends Rule {
+PlusRule: class extends UnaryRule {
 
-    rule: Rule
-
-    init: func(=rule) {}
+    init: super func
 
     toString: func -> String {
         "%s*" format(rule _)
     }
 
-    resolve: func (g: Grammar) {
-        rule resolve(g)
+    writeInSitu: func (trail: Trail, writer: Writer) {
+        tok1 := genName()
+        tok2 := genName()
+        writer writef("%s := %s(_reader)\n", tok1, sub)
+        writer writef("while (%s) {\n", tok1)
+        writer writef("  %s := %s(_reader)\n", tok2, sub)
+        writer writef("  if(%s) { %s = %s merge(%s) } else { break }\n", tok2, tok1, tok1, tok2)
+        writer write ("}\n")
+        writer writef("%s\n", tok1)
     }
 
 }

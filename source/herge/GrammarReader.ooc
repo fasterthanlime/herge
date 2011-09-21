@@ -1,6 +1,7 @@
 import io/[Reader, StringReader]
 import structs/ArrayList
 import text/Regexp
+import Token
 
 GrammarReader: class extends StringReader {
 
@@ -8,6 +9,10 @@ GrammarReader: class extends StringReader {
 
     init: func (string: String) {
         super(string)
+    }
+
+    emptyToken: func {
+        Token new(this, marker, marker)
     }
 
     readRegexp: func (r: Regexp, groupIndex := 0) -> String {
