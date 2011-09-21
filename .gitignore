@@ -4,3 +4,4 @@ prefix/
 bin/
 *_tmp
 .*.swp
+core

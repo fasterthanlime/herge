@@ -1,0 +1,7 @@
+AST := Menu
+
+Menu := Prologue - Epilogue
+
+- := " "*
+Prologue := "Hi" | "Hello"
+Epilogue := "you" | "there"

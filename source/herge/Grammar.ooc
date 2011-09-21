@@ -23,7 +23,7 @@ Grammar: class {
         readTopLevels()
 
         for(rule in rules) {
-            rule resolve(this)
+            rule resolve(Trail new(this, params, rule))
         }
 
         for(rule in rules) {

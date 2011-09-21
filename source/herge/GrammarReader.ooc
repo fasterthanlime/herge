@@ -11,7 +11,7 @@ GrammarReader: class extends StringReader {
         super(string)
     }
 
-    emptyToken: func {
+    emptyToken: func -> Token {
         Token new(this, marker, marker)
     }
 
